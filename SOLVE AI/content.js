@@ -88,7 +88,7 @@ if (typeof window.solveAiInitialized === 'undefined') {
     const settings = await new Promise(resolve => {
       chrome.storage.local.get({
         disclaimerShown: false,
-        stealthMode: false
+        stealthMode: true
       }, resolve);
     });
 
@@ -322,15 +322,16 @@ if (typeof window.solveAiInitialized === 'undefined') {
           pointer-events: none;
         `;
       } else {
-        // Premium loader ring
+        // Small blinking dot loader (replacing the large ring)
         loader.style.cssText = `
           position: fixed; bottom: 24px; right: 24px;
-          width: 44px; height: 44px;
+          width: 12px; height: 12px;
+          background-color: #10b981;
           border-radius: 50%;
-          border: 3px solid rgba(16, 185, 129, 0.2);
-          border-top-color: #10b981;
           z-index: 2147483647;
-          animation: sa-spin 0.8s linear infinite;
+          animation: sa-pulse 1.2s infinite;
+          box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+          pointer-events: none;
         `;
       }
       document.body.appendChild(loader);

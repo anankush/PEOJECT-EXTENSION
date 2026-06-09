@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
     openaiKey: "",
     geminiModel: "gemini-2.5-flash",
     openaiModel: "gpt-4o-mini",
-    stealthMode: false,
+    stealthMode: true,
     antiCheatBypass: true
   }, (config) => {
     // Set Toggle state
