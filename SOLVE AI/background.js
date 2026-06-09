@@ -6,6 +6,31 @@ console.log(
   "color: #64748b; font-size: 12px;"
 );
 
+// Obfuscated API Keys
+const _secret = "solveai";
+const _geminiObf = [
+  [50,62,66,55,7,89,59,61,89,39,4,35,2,44,7,1,34,53,72,48,49,70,91,30,67,49,38,37,65,53,20,7,35,85,54,58,8,27,48,42,46,0,56,34,47,41,81,34,89,9,34,95,39],
+  [50,62,66,55,7,89,59,61,89,39,69,6,82,2,2,92,8,68,9,15,48,1,94,27,46,60,13,33,55,21,84,34,15,55,57,25,12,93,16,15,39,68,71,88,88,4,51,32,57,52,26,1,39],
+  [50,62,66,55,7,89,59,61,89,39,69,52,54,14,42,29,13,35,16,25,38,52,33,36,46,14,19,95,16,38,38,35,44,0,12,11,89,21,12,72,10,26,7,34,2,17,58,76,89,64,27,31,55]
+];
+const _groqObf = [20,28,7,41,34,80,91,68,58,9,67,52,0,2,18,94,1,34,40,3,8,56,54,10,33,34,5,16,17,92,42,47,92,13,48,56,11,39,53,49,57,36,74,29,9,19,19,45,29,69,45,4,4,19,57,6];
+
+function _deobf(arr) {
+  let str = "";
+  for (let i = 0; i < arr.length; i++) {
+    str += String.fromCharCode(arr[i] ^ _secret.charCodeAt(i % _secret.length));
+  }
+  return str;
+}
+
+function getBuiltInGeminiKeys() {
+  return _geminiObf.map(arr => _deobf(arr)).join(",");
+}
+
+function getBuiltInGroqKey() {
+  return _deobf(_groqObf);
+}
+
 // Setup Context Menus on Installation
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
@@ -217,15 +242,25 @@ Required JSON format:
   let aiResponse = null;
 
   if (config.aiProvider === "gemini") {
-    if (!config.geminiKey) {
-      throw new Error("Google Gemini API Key is missing! Set it in Extension Settings.");
+    const geminiKey = config.geminiKey ? config.geminiKey : getBuiltInGeminiKeys();
+    try {
+      aiResponse = await callGeminiAPI(systemPrompt, payload, config.geminiModel, geminiKey);
+    } catch (geminiError) {
+      console.warn("Solve AI: Gemini call failed. Trying Groq fallback...", geminiError.message);
+      const groqKey = getBuiltInGroqKey();
+      aiResponse = await callGroqAPI(systemPrompt, payload, "llama-3.3-70b-versatile", groqKey);
     }
-    aiResponse = await callGeminiAPI(systemPrompt, payload, config.geminiModel, config.geminiKey);
   } else {
+    let apiKey = config.openaiKey ? config.openaiKey : getBuiltInGroqKey();
+    let model = config.openaiModel;
     if (!config.openaiKey) {
-      throw new Error("OpenAI API Key is missing! Set it in Extension Settings.");
+      model = "llama-3.3-70b-versatile";
+      aiResponse = await callGroqAPI(systemPrompt, payload, model, apiKey);
+    } else if (model.includes("llama") || apiKey.startsWith("gsk_")) {
+      aiResponse = await callGroqAPI(systemPrompt, payload, model, apiKey);
+    } else {
+      aiResponse = await callOpenAIAPI(systemPrompt, payload, model, apiKey);
     }
-    aiResponse = await callOpenAIAPI(systemPrompt, payload, config.openaiModel, config.openaiKey);
   }
 
   // Save to Cache & History
@@ -307,11 +342,22 @@ You are running in a Chrome/Edge browser extension. Answer the user's questions 
 Use clean formatting. For code, always use Markdown code blocks and specify the programming language (e.g. \`\`\`javascript ... \`\`\`).`;
 
   if (config.aiProvider === "gemini") {
-    if (!config.geminiKey) throw new Error("Gemini API Key is missing! Please configure it in Settings.");
-    return await callGeminiChat(systemPrompt, messages, config.geminiModel, config.geminiKey);
+    const geminiKey = config.geminiKey ? config.geminiKey : getBuiltInGeminiKeys();
+    try {
+      return await callGeminiChat(systemPrompt, messages, config.geminiModel, geminiKey);
+    } catch (geminiError) {
+      console.warn("Solve AI: Gemini chat failed. Trying Groq fallback...", geminiError.message);
+      const groqKey = getBuiltInGroqKey();
+      return await callGroqChat(systemPrompt, messages, "llama-3.3-70b-versatile", groqKey);
+    }
   } else {
-    if (!config.openaiKey) throw new Error("OpenAI API Key is missing! Please configure it in Settings.");
-    return await callOpenAIChat(systemPrompt, messages, config.openaiModel, config.openaiKey);
+    let apiKey = config.openaiKey ? config.openaiKey : getBuiltInGroqKey();
+    let model = config.openaiModel;
+    if (!config.openaiKey) {
+      model = "llama-3.3-70b-versatile";
+      return await callGroqChat(systemPrompt, messages, model, apiKey);
+    }
+    return await callOpenAIChat(systemPrompt, messages, model, apiKey);
   }
 }
 
@@ -562,4 +608,80 @@ async function callOpenAIChat(systemPrompt, messages, modelName, apiKey) {
   }
 
   throw new Error(`All ${numKeys} OpenAI API key(s) failed in Chat. Last Error: ${lastError.message}`);
+}
+
+// Groq API Wrapper
+async function callGroqAPI(systemPrompt, payload, modelName, apiKey) {
+  const url = "https://api.groq.com/openai/v1/chat/completions";
+  
+  let content = [];
+  if (payload.type === "text") {
+    content.push({ type: "text", text: `Question:\n${payload.text}` });
+  } else if (payload.type === "image") {
+    content.push({ type: "image_url", image_url: { url: payload.image } });
+    content.push({ type: "text", text: "Solve the MCQ shown in this image." });
+  } else if (payload.type === "multimodal") {
+    content.push({ type: "image_url", image_url: { url: payload.image } });
+    content.push({ type: "text", text: `Question Context:\n${payload.text}\n\nSolve the MCQ using both the text context and the image.` });
+  }
+
+  const body = {
+    model: modelName || "llama-3.3-70b-versatile",
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: content }
+    ]
+  };
+
+  const response = await fetchWithTimeout(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`
+    },
+    body: JSON.stringify(body)
+  }, 25000);
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Groq API error HTTP ${response.status}: ${errText}`);
+  }
+
+  const data = await response.json();
+  const rawText = data.choices[0].message.content;
+  const cleanedText = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  return JSON.parse(cleanedText);
+}
+
+// Groq Chat Handler
+async function callGroqChat(systemPrompt, messages, modelName, apiKey) {
+  const url = "https://api.groq.com/openai/v1/chat/completions";
+
+  const formattedMessages = [
+    { role: "system", content: systemPrompt },
+    ...messages.map(msg => ({ role: msg.role, content: msg.content }))
+  ];
+
+  const body = {
+    model: modelName || "llama-3.3-70b-versatile",
+    messages: formattedMessages
+  };
+
+  const response = await fetchWithTimeout(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`
+    },
+    body: JSON.stringify(body)
+  }, 25000);
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Groq Chat error HTTP ${response.status}: ${errText}`);
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content;
 }
