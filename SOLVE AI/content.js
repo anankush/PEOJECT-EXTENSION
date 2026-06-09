@@ -569,6 +569,30 @@ if (typeof window.solveAiInitialized === 'undefined') {
     shadow.innerHTML = html;
     document.body.appendChild(container);
 
+    // Auto-close after 3 seconds, with mouse hover detection to pause
+    let autoCloseTimer = setTimeout(() => {
+      if (container && container.parentNode) {
+        container.remove();
+      }
+    }, 3000);
+
+    const cardElement = shadow.querySelector('.sa-card');
+    if (cardElement) {
+      cardElement.addEventListener('mouseenter', () => {
+        if (autoCloseTimer) {
+          clearTimeout(autoCloseTimer);
+          autoCloseTimer = null;
+        }
+      });
+      cardElement.addEventListener('mouseleave', () => {
+        autoCloseTimer = setTimeout(() => {
+          if (container && container.parentNode) {
+            container.remove();
+          }
+        }, 3000);
+      });
+    }
+
     // Draggable Implementation
     const dragHandle = shadow.getElementById('sa-drag');
     let isDragging = false;
