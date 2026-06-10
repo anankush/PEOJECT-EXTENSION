@@ -106,4 +106,5 @@ API keys are configured safely via the Options UI:
 
 ## 🏷️ Credits
 
-### **POWERED BY PROJECT EXTENSION DEVELOPED BY ANKUSH**
+### **POWERED BY PROJECT EXTENSION**
+**DEVELOPED BY NAYAN**
