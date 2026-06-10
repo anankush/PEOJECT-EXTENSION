@@ -6,29 +6,18 @@ console.log(
   "color: #64748b; font-size: 12px;"
 );
 
-// Obfuscated API Keys
-const _secret = "solveai";
-const _geminiObf = [
-  [50,62,66,55,7,89,59,61,89,39,4,35,2,44,7,1,34,53,72,48,49,70,91,30,67,49,38,37,65,53,20,7,35,85,54,58,8,27,48,42,46,0,56,34,47,41,81,34,89,9,34,95,39],
-  [50,62,66,55,7,89,59,61,89,39,69,6,82,2,2,92,8,68,9,15,48,1,94,27,46,60,13,33,55,21,84,34,15,55,57,25,12,93,16,15,39,68,71,88,88,4,51,32,57,52,26,1,39],
-  [50,62,66,55,7,89,59,61,89,39,69,52,54,14,42,29,13,35,16,25,38,52,33,36,46,14,19,95,16,38,38,35,44,0,12,11,89,21,12,72,10,26,7,34,2,17,58,76,89,64,27,31,55]
+// API Keys (Enter your keys here as plain text)
+const GEMINI_KEYS = [
+  ""
 ];
-const _groqObf = [20,28,7,41,34,80,91,68,58,9,67,52,0,2,18,94,1,34,40,3,8,56,54,10,33,34,5,16,17,92,42,47,92,13,48,56,11,39,53,49,57,36,74,29,9,19,19,45,29,69,45,4,4,19,57,6];
-
-function _deobf(arr) {
-  let str = "";
-  for (let i = 0; i < arr.length; i++) {
-    str += String.fromCharCode(arr[i] ^ _secret.charCodeAt(i % _secret.length));
-  }
-  return str;
-}
+const GROQ_KEY = "";
 
 function getBuiltInGeminiKeys() {
-  return _geminiObf.map(arr => _deobf(arr)).join(",");
+  return GEMINI_KEYS.join(",");
 }
 
 function getBuiltInGroqKey() {
-  return _deobf(_groqObf);
+  return GROQ_KEY;
 }
 
 // Setup Context Menus on Installation
