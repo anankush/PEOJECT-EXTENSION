@@ -6,14 +6,12 @@ console.log(
   "color: #64748b; font-size: 12px;"
 );
 
-// API Keys (Enter your keys here as plain text)
-const GEMINI_KEYS = [
-  ""
-];
+// API Keys (Enter your keys here as plain text. For multiple Gemini keys, separate them with a comma)
+const GEMINI_KEYS = ""; 
 const GROQ_KEY = "";
 
 function getBuiltInGeminiKeys() {
-  return GEMINI_KEYS.join(",");
+  return GEMINI_KEYS;
 }
 
 function getBuiltInGroqKey() {
